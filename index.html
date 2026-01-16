@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sharey - Screenshot & Screen Recording</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📸 Sharey</h1>
+            <p class="subtitle">Capture, Edit, Share</p>
+        </header>
+
+        <main>
+            <!-- Capture Section -->
+            <section class="capture-section">
+                <div class="action-buttons">
+                    <button id="screenshotBtn" class="btn btn-primary">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Take Screenshot
+                    </button>
+                    <button id="recordBtn" class="btn btn-secondary">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                        </svg>
+                        <span id="recordBtnText">Start Recording</span>
+                    </button>
+                </div>
+                <div id="recordingTimer" class="recording-timer hidden">
+                    <span class="recording-dot"></span>
+                    <span id="timerText">00:00</span>
+                </div>
+            </section>
+
+            <!-- Editor Section -->
+            <section id="editorSection" class="editor-section hidden">
+                <div class="editor-toolbar">
+                    <div class="tool-group">
+                        <button id="cropTool" class="tool-btn" data-tool="crop" title="Crop">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"/>
+                                <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"/>
+                            </svg>
+                        </button>
+                        <button id="boxTool" class="tool-btn" data-tool="box" title="Box">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            </svg>
+                        </button>
+                        <button id="arrowTool" class="tool-btn" data-tool="arrow" title="Arrow">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                <polyline points="12 5 19 12 12 19"/>
+                            </svg>
+                        </button>
+                        <button id="stepTool" class="tool-btn" data-tool="step" title="Step Indicator">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <text x="12" y="16" text-anchor="middle" font-size="12" fill="currentColor" stroke="none">1</text>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="tool-group">
+                        <input type="color" id="colorPicker" value="#ff0000" title="Color">
+                        <input type="range" id="strokeWidth" min="1" max="10" value="3" title="Stroke Width">
+                    </div>
+                    <div class="tool-group">
+                        <button id="undoBtn" class="tool-btn" title="Undo">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7v6h6"/>
+                                <path d="M21 17a9 9 0 00-9-9 9 9 0 00-9 9"/>
+                            </svg>
+                        </button>
+                        <button id="clearBtn" class="tool-btn" title="Clear All">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="editorCanvas"></canvas>
+                </div>
+                <div class="editor-actions">
+                    <button id="copyBtn" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                        </svg>
+                        Copy to Clipboard
+                    </button>
+                    <button id="downloadBtn" class="btn btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download
+                    </button>
+                    <button id="saveLocalBtn" class="btn btn-accent">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Save Locally
+                    </button>
+                    <button id="closeEditorBtn" class="btn btn-outline">Close</button>
+                </div>
+            </section>
+
+            <!-- Library Section -->
+            <section class="library-section">
+                <h2>Saved Items</h2>
+                <div id="libraryGrid" class="library-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
