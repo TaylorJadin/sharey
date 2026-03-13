@@ -77,7 +77,29 @@
                                 <path d="M21 17a9 9 0 00-9-9 9 9 0 00-9 9"/>
                             </svg>
                         </button>
-                        <button id="clearBtn" class="tool-btn" title="Clear All">
+                        <button id="clearBtn" class="tool-btn" title="Clear Annotations">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="toolbar-spacer"></div>
+                    <div class="tool-group toolbar-actions">
+                        <button id="copyBtn" class="tool-btn" title="Copy to Clipboard">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                        </button>
+                        <button id="downloadBtn" class="tool-btn" title="Download">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </button>
+                        <button id="closeEditorBtn" class="tool-btn close-btn" title="Close">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -88,37 +110,23 @@
                 <div class="canvas-container">
                     <canvas id="editorCanvas"></canvas>
                 </div>
-                <div class="editor-actions">
-                    <button id="copyBtn" class="btn btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2"/>
-                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                        </svg>
-                        Copy to Clipboard
-                    </button>
-                    <button id="downloadBtn" class="btn btn-secondary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download
-                    </button>
-                    <button id="saveLocalBtn" class="btn btn-accent">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/>
-                            <polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        Save Locally
-                    </button>
-                    <button id="closeEditorBtn" class="btn btn-outline">Close</button>
-                </div>
             </section>
 
             <!-- Library Section -->
             <section class="library-section">
-                <h2>Saved Items</h2>
+                <div class="library-header">
+                    <div>
+                        <h2>Recent Items</h2>
+                        <p class="library-hint">Items are stored locally in your browser cache and may be cleared automatically.</p>
+                    </div>
+                    <button id="clearAllBtn" class="btn btn-outline btn-small">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                        Clear All
+                    </button>
+                </div>
                 <div id="libraryGrid" class="library-grid"></div>
             </section>
         </main>

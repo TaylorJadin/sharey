@@ -16,7 +16,11 @@ const state = {
     recordingStartTime: null,
     timerInterval: null,
     cropSelection: null,
-    isCropping: false
+    isCropping: false,
+    currentGroupId: null,      // The group being edited
+    currentRevisionId: null,   // The specific revision being edited
+    hasUnsavedChanges: false,  // Track if changes need new revision
+    baseImageData: null        // The image data when editing started
 };
 
 // DOM Elements
@@ -38,9 +42,9 @@ const elements = {
     clearBtn: document.getElementById('clearBtn'),
     copyBtn: document.getElementById('copyBtn'),
     downloadBtn: document.getElementById('downloadBtn'),
-    saveLocalBtn: document.getElementById('saveLocalBtn'),
     closeEditorBtn: document.getElementById('closeEditorBtn'),
     libraryGrid: document.getElementById('libraryGrid'),
+    clearAllBtn: document.getElementById('clearAllBtn'),
     toast: document.getElementById('toast')
 };
 
@@ -68,8 +72,8 @@ function initializeEventListeners() {
     elements.clearBtn.addEventListener('click', clearAllAnnotations);
     elements.copyBtn.addEventListener('click', copyToClipboard);
     elements.downloadBtn.addEventListener('click', downloadImage);
-    elements.saveLocalBtn.addEventListener('click', saveToLocal);
     elements.closeEditorBtn.addEventListener('click', closeEditor);
+    elements.clearAllBtn.addEventListener('click', clearAllItems);
 
     // Canvas events
     elements.editorCanvas.addEventListener('mousedown', handleMouseDown);
@@ -102,8 +106,33 @@ async function captureScreenshot() {
         stream.getTracks().forEach(track => track.stop());
 
         const dataUrl = canvas.toDataURL('image/png');
+        
+        // Create new group with original
+        const groupId = Date.now();
+        const revisionId = groupId;
+        const item = {
+            id: revisionId,
+            groupId: groupId,
+            type: 'screenshot',
+            data: dataUrl,
+            isOriginal: true,
+            revisionNumber: 0,
+            timestamp: new Date().toISOString()
+        };
+        
+        const library = getLibrary();
+        library.push(item);
+        saveLibrary(library);
+        loadLibrary();
+        
+        // Set up state for editing
+        state.currentGroupId = groupId;
+        state.currentRevisionId = revisionId;
+        state.hasUnsavedChanges = false;
+        state.baseImageData = dataUrl;
+        
         loadImageIntoEditor(dataUrl);
-        showToast('Screenshot captured successfully!', 'success');
+        showToast('Screenshot captured!', 'success');
     } catch (error) {
         if (error.name !== 'NotAllowedError') {
             showToast('Failed to capture screenshot: ' + error.message, 'error');
@@ -145,7 +174,7 @@ async function startRecording() {
             const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
             saveRecordingToLibrary(url, blob);
-            showToast('Recording saved successfully!', 'success');
+            showToast('Recording saved!', 'success');
         };
 
         stream.getVideoTracks()[0].onended = () => {
@@ -425,6 +454,9 @@ function handleMouseUp(e) {
     state.annotations.push(annotation);
     state.isDrawing = false;
     redrawCanvas();
+    
+    // Auto-save after annotation
+    autoSaveRevision();
 }
 
 // Crop Functions
@@ -485,7 +517,10 @@ function applyCrop() {
         
         redrawCanvas();
         cancelCrop();
-        showToast('Image cropped successfully!', 'success');
+        
+        // Auto-save after crop
+        autoSaveRevision();
+        showToast('Image cropped!', 'success');
     };
     croppedImage.src = tempCanvas.toDataURL();
 }
@@ -508,6 +543,46 @@ function cancelCrop() {
     redrawCanvas();
 }
 
+// Auto-save revision system
+function autoSaveRevision() {
+    if (!state.currentGroupId) return;
+    
+    const dataUrl = elements.editorCanvas.toDataURL('image/png');
+    const library = getLibrary();
+    
+    // Check if this is the first edit (need to create new revision)
+    if (!state.hasUnsavedChanges) {
+        // First change - create a new revision
+        const groupRevisions = library.filter(item => item.groupId === state.currentGroupId);
+        const maxRevision = Math.max(...groupRevisions.map(r => r.revisionNumber || 0));
+        
+        const newRevisionId = Date.now();
+        const newRevision = {
+            id: newRevisionId,
+            groupId: state.currentGroupId,
+            type: 'screenshot',
+            data: dataUrl,
+            isOriginal: false,
+            revisionNumber: maxRevision + 1,
+            timestamp: new Date().toISOString()
+        };
+        
+        library.push(newRevision);
+        state.currentRevisionId = newRevisionId;
+        state.hasUnsavedChanges = true;
+    } else {
+        // Subsequent changes - update the current revision
+        const index = library.findIndex(item => item.id === state.currentRevisionId);
+        if (index !== -1) {
+            library[index].data = dataUrl;
+            library[index].timestamp = new Date().toISOString();
+        }
+    }
+    
+    saveLibrary(library);
+    loadLibrary();
+}
+
 // Annotation Actions
 function undoLastAnnotation() {
     if (state.annotations.length > 0) {
@@ -516,13 +591,16 @@ function undoLastAnnotation() {
             state.stepCounter--;
         }
         redrawCanvas();
+        autoSaveRevision();
     }
 }
 
 function clearAllAnnotations() {
+    if (state.annotations.length === 0) return;
     state.annotations = [];
     state.stepCounter = 1;
     redrawCanvas();
+    autoSaveRevision();
 }
 
 // Export Actions
@@ -538,7 +616,7 @@ async function copyToClipboard() {
 
         showToast('Copied to clipboard!', 'success');
     } catch (error) {
-        showToast('Failed to copy to clipboard: ' + error.message, 'error');
+        showToast('Failed to copy: ' + error.message, 'error');
     }
 }
 
@@ -548,28 +626,7 @@ function downloadImage() {
     link.download = `screenshot-${Date.now()}.png`;
     link.href = dataUrl;
     link.click();
-    showToast('Downloaded successfully!', 'success');
-}
-
-async function saveToLocal() {
-    try {
-        const dataUrl = elements.editorCanvas.toDataURL('image/png');
-        const item = {
-            id: Date.now(),
-            type: 'screenshot',
-            data: dataUrl,
-            timestamp: new Date().toISOString()
-        };
-
-        const library = getLibrary();
-        library.push(item);
-        saveLibrary(library);
-        loadLibrary();
-
-        showToast('Saved to library!', 'success');
-    } catch (error) {
-        showToast('Failed to save: ' + error.message, 'error');
-    }
+    showToast('Downloaded!', 'success');
 }
 
 function closeEditor() {
@@ -577,9 +634,26 @@ function closeEditor() {
     state.currentTool = null;
     state.annotations = [];
     state.stepCounter = 1;
+    state.currentGroupId = null;
+    state.currentRevisionId = null;
+    state.hasUnsavedChanges = false;
+    state.baseImageData = null;
     document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.remove('active');
     });
+}
+
+function clearAllItems() {
+    if (getLibrary().length === 0) {
+        showToast('No items to clear', 'error');
+        return;
+    }
+    
+    if (confirm('Clear all recent items? This cannot be undone.')) {
+        saveLibrary([]);
+        loadLibrary();
+        showToast('All items cleared', 'success');
+    }
 }
 
 // Local Storage Management
@@ -598,9 +672,9 @@ function saveLibrary(library) {
         localStorage.setItem('sharey-library', JSON.stringify(library));
     } catch (error) {
         if (error.name === 'QuotaExceededError') {
-            showToast('Storage quota exceeded. Please delete some items.', 'error');
+            showToast('Storage full. Please clear some items.', 'error');
         } else {
-            showToast('Failed to save to storage: ' + error.message, 'error');
+            showToast('Failed to save: ' + error.message, 'error');
         }
     }
 }
@@ -628,73 +702,125 @@ function loadLibrary() {
     elements.libraryGrid.innerHTML = '';
 
     if (library.length === 0) {
-        elements.libraryGrid.innerHTML = '<p style="color: var(--text-muted); text-align: center; grid-column: 1/-1;">No saved items yet. Capture a screenshot or record your screen to get started!</p>';
+        elements.libraryGrid.innerHTML = '<p style="color: var(--text-muted); text-align: center; grid-column: 1/-1;">No items yet. Capture a screenshot or record your screen to get started!</p>';
         return;
     }
 
-    library.reverse().forEach(item => {
-        const itemEl = createLibraryItem(item);
-        elements.libraryGrid.appendChild(itemEl);
+    // Group screenshots by groupId
+    const groups = {};
+    const recordings = [];
+    
+    library.forEach(item => {
+        if (item.type === 'recording') {
+            recordings.push(item);
+        } else if (item.groupId) {
+            if (!groups[item.groupId]) {
+                groups[item.groupId] = [];
+            }
+            groups[item.groupId].push(item);
+        } else {
+            // Legacy items without groupId - treat as their own group
+            const legacyGroupId = item.id;
+            item.groupId = legacyGroupId;
+            item.isOriginal = true;
+            item.revisionNumber = 0;
+            groups[legacyGroupId] = [item];
+        }
+    });
+    
+    // Sort groups by newest first (by groupId which is timestamp)
+    const sortedGroupIds = Object.keys(groups).sort((a, b) => b - a);
+    
+    // Render groups
+    sortedGroupIds.forEach(groupId => {
+        const revisions = groups[groupId].sort((a, b) => (a.revisionNumber || 0) - (b.revisionNumber || 0));
+        const groupEl = createRevisionGroup(revisions);
+        elements.libraryGrid.appendChild(groupEl);
+    });
+    
+    // Render recordings (newest first)
+    recordings.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    recordings.forEach(recording => {
+        const recordingEl = createRecordingItem(recording);
+        elements.libraryGrid.appendChild(recordingEl);
     });
 }
 
-function createLibraryItem(item) {
+function createRevisionGroup(revisions) {
     const div = document.createElement('div');
-    div.className = 'library-item';
-
-    const date = new Date(item.timestamp);
-    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-
-    if (item.type === 'screenshot') {
-        div.innerHTML = `
-            <img src="${item.data}" class="library-item-preview" alt="Screenshot">
-            <div class="library-item-info">
-                <span class="library-item-type">📸 Screenshot</span>
-                <span>${formattedDate}</span>
-            </div>
-            <div class="library-item-actions">
-                <button class="btn-view">View</button>
-                <button class="btn-delete">Delete</button>
-            </div>
+    div.className = 'revision-group';
+    
+    const original = revisions.find(r => r.isOriginal) || revisions[0];
+    const date = new Date(original.timestamp);
+    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    const hasRevisions = revisions.length > 1;
+    
+    div.innerHTML = `
+        <div class="revision-group-header">
+            <span class="revision-group-title">${hasRevisions ? revisions.length + ' versions' : 'Screenshot'}</span>
+            <span class="revision-group-date">${formattedDate}</span>
+        </div>
+        <div class="revision-items"></div>
+    `;
+    
+    const itemsContainer = div.querySelector('.revision-items');
+    
+    revisions.forEach(revision => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'revision-item' + (revision.isOriginal ? ' original' : '');
+        
+        const label = revision.isOriginal ? 'Original' : `Rev ${revision.revisionNumber}`;
+        
+        itemEl.innerHTML = `
+            <img src="${revision.data}" class="revision-item-preview" alt="Revision">
+            <span class="revision-item-label">${label}</span>
         `;
-
-        div.querySelector('.btn-view').addEventListener('click', () => {
-            loadImageIntoEditor(item.data);
+        
+        itemEl.addEventListener('click', () => {
+            openForEditing(revision);
         });
-    } else if (item.type === 'recording') {
-        div.innerHTML = `
-            <video src="${item.data}" class="library-item-preview" muted></video>
-            <div class="library-item-info">
-                <span class="library-item-type">🎥 Recording</span>
-                <span>${formattedDate}</span>
-            </div>
-            <div class="library-item-actions">
-                <button class="btn-view">Download</button>
-                <button class="btn-delete">Delete</button>
-            </div>
-        `;
-
-        div.querySelector('.btn-view').addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = `recording-${item.id}.webm`;
-            link.href = item.data;
-            link.click();
-        });
-    }
-
-    div.querySelector('.btn-delete').addEventListener('click', () => {
-        deleteLibraryItem(item.id);
+        
+        itemsContainer.appendChild(itemEl);
     });
-
+    
     return div;
 }
 
-function deleteLibraryItem(id) {
-    const library = getLibrary();
-    const filtered = library.filter(item => item.id !== id);
-    saveLibrary(filtered);
-    loadLibrary();
-    showToast('Item deleted', 'success');
+function createRecordingItem(item) {
+    const div = document.createElement('div');
+    div.className = 'library-item-single';
+    
+    const date = new Date(item.timestamp);
+    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    div.innerHTML = `
+        <video src="${item.data}" class="library-item-preview" muted></video>
+        <div class="library-item-info">
+            <span class="library-item-type">Recording</span>
+            <span>${formattedDate}</span>
+        </div>
+    `;
+    
+    div.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = `recording-${item.id}.webm`;
+        link.href = item.data;
+        link.click();
+        showToast('Downloading recording...', 'success');
+    });
+    
+    return div;
+}
+
+function openForEditing(item) {
+    // Set up state for a new editing session
+    state.currentGroupId = item.groupId;
+    state.currentRevisionId = item.id;
+    state.hasUnsavedChanges = false;  // Reset - next edit creates new revision
+    state.baseImageData = item.data;
+    
+    loadImageIntoEditor(item.data);
 }
 
 // Toast Notifications
